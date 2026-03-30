@@ -6,31 +6,80 @@
   <title>Bashoor Exchange - Live</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
-    iframe {
+    html, body {
       width: 100%;
       height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+    .frame-container {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+    iframe {
       border: none;
       display: block;
+      transform-origin: top left;
+      width: 1280px;
+      height: 720px;
     }
-    /* Hidden canvas used to keep browser GPU active */
-    canvas { position: fixed; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+    canvas {
+      position: fixed;
+      opacity: 0;
+      pointer-events: none;
+      width: 1px;
+      height: 1px;
+    }
   </style>
 </head>
 <body>
 
-  <iframe
-    src="https://bashoorexchange.com"
-    allowfullscreen
-    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-  ></iframe>
+  <div class="frame-container" id="container">
+    <iframe
+      id="mainFrame"
+      src="https://bashoorexchange.com"
+      scrolling="no"
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+    ></iframe>
+  </div>
 
   <canvas id="keepAlive"></canvas>
 
   <script>
-    // ── Keep-Alive Engine ──────────────────────────────────────────
-    // 1. WebGL pulse: re-draws on the hidden canvas every 20s
-    //    keeps the GPU/browser renderer from going idle
+    // ── Scale iframe to fit screen perfectly ─────────────────────
+    function scaleIframe() {
+      const iframe = document.getElementById('mainFrame');
+      const container = document.getElementById('container');
+
+      const screenW = window.innerWidth;
+      const screenH = window.innerHeight;
+
+      const siteW = 1280;
+      const siteH = 900;
+
+      const scaleX = screenW / siteW;
+      const scaleY = screenH / siteH;
+      const scale = Math.min(scaleX, scaleY);
+
+      iframe.style.width = siteW + 'px';
+      iframe.style.height = siteH + 'px';
+      iframe.style.transform = `scale(${scale})`;
+      iframe.style.transformOrigin = 'top left';
+
+      const scaledW = siteW * scale;
+      const scaledH = siteH * scale;
+      container.style.paddingLeft = ((screenW - scaledW) / 2) + 'px';
+      container.style.paddingTop = ((screenH - scaledH) / 2) + 'px';
+    }
+
+    window.addEventListener('load', scaleIframe);
+    window.addEventListener('resize', scaleIframe);
+    document.getElementById('mainFrame').addEventListener('load', scaleIframe);
+    scaleIframe();
+
+    // ── Keep-Alive Engine ────────────────────────────────────────
     const canvas = document.getElementById('keepAlive');
     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
     if (gl) {
@@ -40,26 +89,22 @@
       }, 20000);
     }
 
-    // 2. Audio context silent pulse every 30s
-    //    prevents browser audio/activity timeout
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (AudioCtx) {
         const audioCtx = new AudioCtx();
         setInterval(() => {
-          const oscillator = audioCtx.createOscillator();
-          const gainNode = audioCtx.createGain();
-          gainNode.gain.value = 0; // completely silent
-          oscillator.connect(gainNode);
-          gainNode.connect(audioCtx.destination);
-          oscillator.start();
-          oscillator.stop(audioCtx.currentTime + 0.01);
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          gain.gain.value = 0;
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.01);
         }, 30000);
       }
     } catch(e) {}
 
-    // 3. Fake user interaction every 25s
-    //    dispatches a mousemove event to trick the browser
     setInterval(() => {
       document.dispatchEvent(new MouseEvent('mousemove', {
         bubbles: true,
@@ -69,35 +114,26 @@
       }));
     }, 25000);
 
-    // 4. Page visibility API — if browser hides the tab, log and recover
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        // Try to bring focus back
         setTimeout(() => { window.focus(); }, 1000);
       }
     });
 
-    // 5. Reload iframe every 55 minutes to keep content fresh
-    //    (in case the currency data stops updating)
     setInterval(() => {
-      const iframe = document.querySelector('iframe');
+      const iframe = document.getElementById('mainFrame');
       iframe.src = iframe.src;
     }, 55 * 60 * 1000);
 
-    // 6. Prevent screen sleep via Wake Lock API (supported on some webOS versions)
     async function requestWakeLock() {
       try {
         if ('wakeLock' in navigator) {
-          const wakeLock = await navigator.wakeLock.request('screen');
-          wakeLock.addEventListener('release', () => {
-            // Re-request if released
-            setTimeout(requestWakeLock, 2000);
-          });
+          const wl = await navigator.wakeLock.request('screen');
+          wl.addEventListener('release', () => setTimeout(requestWakeLock, 2000));
         }
       } catch(e) {}
     }
     requestWakeLock();
-    // ──────────────────────────────────────────────────────────────
   </script>
 
 </body>
