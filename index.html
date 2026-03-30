@@ -6,25 +6,22 @@
   <title>Bashoor Exchange - Live</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
     html, body {
       width: 100%;
       height: 100%;
       overflow: hidden;
       background: #000;
     }
-    .frame-container {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      position: relative;
-    }
+
     iframe {
       border: none;
       display: block;
-      transform-origin: top left;
-      width: 1280px;
-      height: 720px;
+      position: absolute;
+      top: 0;
+      left: 0;
     }
+
     canvas {
       position: fixed;
       opacity: 0;
@@ -36,48 +33,54 @@
 </head>
 <body>
 
-  <div class="frame-container" id="container">
-    <iframe
-      id="mainFrame"
-      src="https://bashoorexchange.com"
-      scrolling="no"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-    ></iframe>
-  </div>
+  <iframe
+    id="mainFrame"
+    src="https://bashoorexchange.com"
+    scrolling="no"
+    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+  ></iframe>
 
   <canvas id="keepAlive"></canvas>
 
   <script>
-    // ── Scale iframe to fit screen perfectly ─────────────────────
-    function scaleIframe() {
+    function fitIframe() {
       const iframe = document.getElementById('mainFrame');
-      const container = document.getElementById('container');
 
       const screenW = window.innerWidth;
       const screenH = window.innerHeight;
 
-      const siteW = 1280;
-      const siteH = 900;
+      // The site's natural portrait dimensions
+      const siteW = 900;
+      const siteH = 1600;
 
-      const scaleX = screenW / siteW;
-      const scaleY = screenH / siteH;
-      const scale = Math.min(scaleX, scaleY);
+      if (screenH > screenW) {
+        // ── Already Portrait ──
+        const scale = Math.min(screenW / siteW, screenH / siteH);
+        const offsetX = (screenW - siteW * scale) / 2;
+        const offsetY = (screenH - siteH * scale) / 2;
 
-      iframe.style.width = siteW + 'px';
-      iframe.style.height = siteH + 'px';
-      iframe.style.transform = `scale(${scale})`;
-      iframe.style.transformOrigin = 'top left';
+        iframe.style.width = siteW + 'px';
+        iframe.style.height = siteH + 'px';
+        iframe.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+        iframe.style.transformOrigin = 'top left';
 
-      const scaledW = siteW * scale;
-      const scaledH = siteH * scale;
-      container.style.paddingLeft = ((screenW - scaledW) / 2) + 'px';
-      container.style.paddingTop = ((screenH - scaledH) / 2) + 'px';
+      } else {
+        // ── Landscape TV → rotate site 90° to show portrait ──
+        const scale = Math.min(screenH / siteW, screenW / siteH);
+        const offsetX = (screenW - siteH * scale) / 2;
+        const offsetY = screenH - (screenH - siteW * scale) / 2;
+
+        iframe.style.width = siteW + 'px';
+        iframe.style.height = siteH + 'px';
+        iframe.style.transform = `translate(${offsetX}px, ${offsetY}px) rotate(-90deg) scale(${scale})`;
+        iframe.style.transformOrigin = 'top left';
+      }
     }
 
-    window.addEventListener('load', scaleIframe);
-    window.addEventListener('resize', scaleIframe);
-    document.getElementById('mainFrame').addEventListener('load', scaleIframe);
-    scaleIframe();
+    window.addEventListener('load', fitIframe);
+    window.addEventListener('resize', fitIframe);
+    document.getElementById('mainFrame').addEventListener('load', fitIframe);
+    fitIframe();
 
     // ── Keep-Alive Engine ────────────────────────────────────────
     const canvas = document.getElementById('keepAlive');
