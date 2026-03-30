@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bashoor Exchange - Live</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+    /* Hidden canvas used to keep browser GPU active */
+    canvas { position: fixed; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
+  </style>
+</head>
+<body>
+
+  <iframe
+    src="https://bashoorexchange.com"
+    allowfullscreen
+    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+  ></iframe>
+
+  <canvas id="keepAlive"></canvas>
+
+  <script>
+    // ── Keep-Alive Engine ──────────────────────────────────────────
+    // 1. WebGL pulse: re-draws on the hidden canvas every 20s
+    //    keeps the GPU/browser renderer from going idle
+    const canvas = document.getElementById('keepAlive');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (gl) {
+      setInterval(() => {
+        gl.clearColor(Math.random(), Math.random(), Math.random(), 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+      }, 20000);
+    }
+
+    // 2. Audio context silent pulse every 30s
+    //    prevents browser audio/activity timeout
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const audioCtx = new AudioCtx();
+        setInterval(() => {
+          const oscillator = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          gainNode.gain.value = 0; // completely silent
+          oscillator.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          oscillator.start();
+          oscillator.stop(audioCtx.currentTime + 0.01);
+        }, 30000);
+      }
+    } catch(e) {}
+
+    // 3. Fake user interaction every 25s
+    //    dispatches a mousemove event to trick the browser
+    setInterval(() => {
+      document.dispatchEvent(new MouseEvent('mousemove', {
+        bubbles: true,
+        cancelable: true,
+        clientX: Math.floor(Math.random() * window.innerWidth),
+        clientY: Math.floor(Math.random() * window.innerHeight)
+      }));
+    }, 25000);
+
+    // 4. Page visibility API — if browser hides the tab, log and recover
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // Try to bring focus back
+        setTimeout(() => { window.focus(); }, 1000);
+      }
+    });
+
+    // 5. Reload iframe every 55 minutes to keep content fresh
+    //    (in case the currency data stops updating)
+    setInterval(() => {
+      const iframe = document.querySelector('iframe');
+      iframe.src = iframe.src;
+    }, 55 * 60 * 1000);
+
+    // 6. Prevent screen sleep via Wake Lock API (supported on some webOS versions)
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          const wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => {
+            // Re-request if released
+            setTimeout(requestWakeLock, 2000);
+          });
+        }
+      } catch(e) {}
+    }
+    requestWakeLock();
+    // ──────────────────────────────────────────────────────────────
+  </script>
+
+</body>
+</html>
