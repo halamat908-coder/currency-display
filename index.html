@@ -3,39 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Bashoor Exchange - Live</title>
+  <title>Bashoor Exchange - Live TV</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    html, body {
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+    iframe {
       width: 100%;
       height: 100%;
-      overflow: hidden;
-      background: #000;
-    }
-
-    iframe {
       border: none;
       display: block;
-      position: absolute;
-      top: 0;
-      left: 0;
     }
-
-    canvas {
-      position: fixed;
-      opacity: 0;
-      pointer-events: none;
-      width: 1px;
-      height: 1px;
-    }
+    canvas { position: fixed; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
   </style>
 </head>
 <body>
 
   <iframe
     id="mainFrame"
-    src="https://bashoorexchange.com"
+    src="https://bashoorexchange.com/tv.php"
     scrolling="no"
     sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
   ></iframe>
@@ -43,46 +28,7 @@
   <canvas id="keepAlive"></canvas>
 
   <script>
-    function fitIframe() {
-      const iframe = document.getElementById('mainFrame');
-
-      const screenW = window.innerWidth;
-      const screenH = window.innerHeight;
-
-      // The site's natural portrait dimensions
-      const siteW = 900;
-      const siteH = 1600;
-
-      if (screenH > screenW) {
-        // ── Already Portrait ──
-        const scale = Math.min(screenW / siteW, screenH / siteH);
-        const offsetX = (screenW - siteW * scale) / 2;
-        const offsetY = (screenH - siteH * scale) / 2;
-
-        iframe.style.width = siteW + 'px';
-        iframe.style.height = siteH + 'px';
-        iframe.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
-        iframe.style.transformOrigin = 'top left';
-
-      } else {
-        // ── Landscape TV → rotate site 90° to show portrait ──
-        const scale = Math.min(screenH / siteW, screenW / siteH);
-        const offsetX = (screenW - siteH * scale) / 2;
-        const offsetY = screenH - (screenH - siteW * scale) / 2;
-
-        iframe.style.width = siteW + 'px';
-        iframe.style.height = siteH + 'px';
-        iframe.style.transform = `translate(${offsetX}px, ${offsetY}px) rotate(-90deg) scale(${scale})`;
-        iframe.style.transformOrigin = 'top left';
-      }
-    }
-
-    window.addEventListener('load', fitIframe);
-    window.addEventListener('resize', fitIframe);
-    document.getElementById('mainFrame').addEventListener('load', fitIframe);
-    fitIframe();
-
-    // ── Keep-Alive Engine ────────────────────────────────────────
+    // 1. WebGL pulse every 20s
     const canvas = document.getElementById('keepAlive');
     const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
     if (gl) {
@@ -92,6 +38,7 @@
       }, 20000);
     }
 
+    // 2. Silent audio pulse every 30s
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (AudioCtx) {
@@ -108,6 +55,7 @@
       }
     } catch(e) {}
 
+    // 3. Fake mouse movement every 25s
     setInterval(() => {
       document.dispatchEvent(new MouseEvent('mousemove', {
         bubbles: true,
@@ -117,17 +65,20 @@
       }));
     }, 25000);
 
+    // 4. Visibility recovery
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         setTimeout(() => { window.focus(); }, 1000);
       }
     });
 
+    // 5. Reload every 55 minutes to keep data fresh
     setInterval(() => {
       const iframe = document.getElementById('mainFrame');
       iframe.src = iframe.src;
     }, 55 * 60 * 1000);
 
+    // 6. Wake Lock API
     async function requestWakeLock() {
       try {
         if ('wakeLock' in navigator) {
@@ -141,3 +92,4 @@
 
 </body>
 </html>
+
